@@ -8,6 +8,8 @@
 *Note: The backend is hosted on a free Render tier and may take 45-60 seconds to spin up on the very first request.*
 
 <img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/25251a62-825e-40b6-95c5-a4bac4cff1fe" />
+<img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/96ad5203-44df-49e5-8c9c-fb1ce50a53a3" />
+
 
 
 ## What it does
