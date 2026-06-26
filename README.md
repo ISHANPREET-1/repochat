@@ -7,7 +7,8 @@
 
 *Note: The backend is hosted on a free Render tier and may take 45-60 seconds to spin up on the very first request.*
 
-*(💡 Tip: Add a screenshot or GIF of your UI working right here!)*
+<img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/25251a62-825e-40b6-95c5-a4bac4cff1fe" />
+
 
 ## What it does
 Paste any public GitHub repo URL → RepoChat indexes the entire codebase → ask questions in natural language → get answers with exact file and line number citations.
