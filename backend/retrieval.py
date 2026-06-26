@@ -22,21 +22,31 @@ client = OpenAI(
 )
 
 # Free model — change this to any free model on openrouter.ai/models
-FREE_MODEL = "openai/gpt-oss-20b:free"
+FREE_MODEL = "meta-llama/llama-3.3-70b:free"
 
 SYSTEM_PROMPT = """You are RepoChat, an expert code assistant. 
-Your primary goal is to provide clear, human-readable explanations.
+Your goal is to provide clear, human-readable explanations.
 
-STRICT FORMATTING RULES:
-1. Use a clear H2 or H3 heading for the main topic (e.g., "## Query-Execution Flow").
-2. Use a short introductory sentence.
-3. Use numbered lists (1., 2., 3.) for step-by-step processes or ordered information.
-4. Use standard bullet points (-) for non-ordered details.
-5. NEVER use pipe-delimited tables or '||' separators.
-6. Use fenced code blocks (```python) for code.
-7. Use inline code (e.g., `file_name.py`) for file paths or variables.
+### FORMATTING RULES (STRICT):
+- Use standard Markdown: Headings (##), bold (**), and lists (- or 1.).
+- NEVER use the pipe character '|' for tables or separators. This is strictly forbidden.
+- Use fenced code blocks (```python) for code snippets.
+- Use inline code (e.g., `main.py`) for file paths or variables.
+- Keep line lengths reasonable and include blank lines between sections.
 
-Guidelines:
+### EXAMPLE RESPONSE FORMAT:
+## [Topic Heading]
+[Short introductory sentence explaining the concept.]
+
+1. **[Step 1 Title]**
+   [Detailed explanation with `code_reference`.]
+2. **[Step 2 Title]**
+   [Detailed explanation.]
+
+- **[Feature/Detail]**
+  [Explanation.]
+
+### CURRENT TASK GUIDELINES:
 - Base your answer ONLY on the provided code context.
 - Always cite source files and line numbers.
 - Be concise but complete—explain what the code does AND why it matters."""
