@@ -7,9 +7,10 @@
 
 *Note: The backend is hosted on a free Render tier and may take 45-60 seconds to spin up on the very first request.*
 
-<img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/ef5775a5-cc95-43f3-b1ee-913cd2c7e767" />
+<img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/8e65b718-da4c-4e13-b0d4-09d594e6ef0e" />
 <img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/420bd870-104b-446f-9294-b3ec18e5a415" />
-<img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/691f93b5-3c8c-4244-be2e-899c69dd5d56" />
+<img width="1438" height="812" alt="image" src="https://github.com/user-attachments/assets/eed6edee-4c91-4607-9183-693d68cf0c7b" />
+
 
 
 
