@@ -176,23 +176,42 @@ def chunk_code(content: str, file_path: str) -> List[Dict]:
 # ── Main ingestion entry point ─────────────────────────────────────────────────
 
 async def ingest_repo(repo_url: str) -> Dict:
-    """
-    Clone a GitHub repo, walk its files, chunk them, embed and store.
-    Returns metadata about the ingestion.
-    """
-    # Stable ID derived from the URL
     repo_id = hashlib.md5(repo_url.encode()).hexdigest()[:12]
+
+    # ── Check if already ingested — skip if so ──
+    from qdrant_client import QdrantClient
+    import os
+    QDRANT_URL = os.getenv("QDRANT_URL")
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+    if QDRANT_URL and QDRANT_API_KEY:
+        _q = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    else:
+        _q = QdrantClient(path="./qdrant_storage")
+    
+    existing = {c.name for c in _q.get_collections().collections}
+    if f"repo_{repo_id}" in existing:
+        print(f"[ingest] Repo already indexed: {repo_id}")
+        return {
+            "repo_id": repo_id,
+            "repo_url": repo_url,
+            "files_processed": 0,
+            "chunks_stored": 0,
+            "status": "ready",
+        }
 
     with tempfile.TemporaryDirectory() as tmpdir:
         print(f"[ingest] Cloning {repo_url} …")
-
-        # Shallow clone — much faster, we only need the latest snapshot
         git.Repo.clone_from(repo_url, tmpdir, depth=1)
 
         all_chunks: List[Dict] = []
         files_processed = 0
 
         for file_path in Path(tmpdir).rglob("*"):
+            # ── Cap at 50 files to stay within free tier ──
+            if files_processed >= 50:
+                print("[ingest] Reached 50 file cap")
+                break
+
             if not file_path.is_file():
                 continue
             if any(skip in file_path.parts for skip in SKIP_DIRS):
@@ -206,17 +225,14 @@ async def ingest_repo(repo_url: str) -> Dict:
                 content = file_path.read_text(encoding="utf-8", errors="ignore")
                 if not content.strip():
                     continue
-
                 relative_path = str(file_path.relative_to(tmpdir))
                 chunks = chunk_code(content, relative_path)
                 all_chunks.extend(chunks)
                 files_processed += 1
-
             except Exception as exc:
                 print(f"[ingest] Skipping {file_path}: {exc}")
 
         print(f"[ingest] {files_processed} files → {len(all_chunks)} chunks")
-
         await embed_and_store(repo_id, all_chunks)
 
     return {
