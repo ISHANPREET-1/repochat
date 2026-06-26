@@ -80,84 +80,116 @@ async def chat_with_repo(
             "sources": [],
         }
 
+    """
+retrieval.py
+
+Retrieves relevant code chunks from Qdrant and uses a fallback system
+to query FREE models via OpenRouter (openrouter.ai).
+"""
+
+import os
+from typing import List, Dict
+from openai import OpenAI
+from embeddings import search
+
+# OpenRouter configuration
+client = OpenAI(
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://openrouter.ai/api/v1",
+)
+
+# Prioritized list of stable, high-performance free models
+AVAILABLE_MODELS = [
+    "openai/gpt-oss-20b:free",
+    "google/gemma-2-9b-it:free",
+    "mistralai/mistral-7b-instruct:free",
+    "meta-llama/llama-3.1-8b-instruct:free"
+]
+
+SYSTEM_PROMPT = """You are RepoChat, an expert code assistant that answers questions about a specific GitHub repository.
+
+CRITICAL FORMATTING INSTRUCTIONS:
+1. Direct Text and Lists Only: Present your response using standard markdown paragraphs, bold headings (##), and clear bullet points (-) or numbered lists (1.).
+2. ABSOLUTELY NO TABLES: Do not use pipes or table structures.
+3. Clean Layout: Use empty line breaks between sections.
+4. Code Snippets: Use fenced code blocks (```python) for code, and backticks (`like_this`) for file paths/identifiers.
+
+CRITICAL ANSWERING GUIDELINES:
+- Base your answer ONLY on the provided code context.
+- Always cite source files and line numbers.
+- If the context doesn't contain enough information, say so clearly."""
+
+def _format_context(chunks: List[Dict]) -> str:
+    """Render retrieved chunks as numbered, labelled code blocks."""
+    parts = []
+    for i, chunk in enumerate(chunks, 1):
+        parts.append(
+            f"[Source {i}] {chunk['file_path']} (lines {chunk['start_line']}–{chunk['end_line']})\n"
+            f"```\n{chunk['content']}\n```"
+        )
+    return "\n\n".join(parts)
+
+async def chat_with_repo(
+    repo_id: str,
+    question: str,
+    chat_history: List[Dict],
+) -> Dict:
+    # 1. Retrieve chunks
+    try:
+        chunks = await search(repo_id, question, top_k=8)
+    except Exception as e:
+        return {"answer": f"Error searching vector database: {str(e)}", "sources": []}
+
+    if not chunks:
+        return {"answer": "I couldn't find relevant code for that question.", "sources": []}
+
+    # 2. Build Prompt
     context = _format_context(chunks)
-
-    # Build message history (keep last 6 turns)
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    for msg in chat_history[-6:]:
-        messages.append({"role": msg["role"], "content": msg["content"]})
-
-    # Inject retrieved context into the latest user message
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + \
+               [{"role": msg["role"], "content": msg["content"]} for msg in chat_history[-6:]]
+    
     messages.append({
         "role": "user",
-        "content": (
-            f"Here are the most relevant code snippets from the repository:\n\n"
-            f"{context}\n\n"
-            f"Question: {question}"
-        ),
+        "content": f"Relevant snippets:\n\n{context}\n\nQuestion: {question}"
     })
 
-    try:
-        response = client.chat.completions.create(
-            model=FREE_MODEL,
-            messages=messages,
-            max_tokens=2048,
-        )
-        
-        # Safeguard: Extract content safely without assuming it exists
-        if response and response.choices and response.choices[0].message:
-            answer_text = response.choices[0].message.content
-        else:
-            answer_text = None
+    # 3. Fallback Loop: Try each model until one succeeds
+    last_error = ""
+    for model in AVAILABLE_MODELS:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=2048,
+            )
             
-    except Exception as exc:
-        error_msg = str(exc).lower()
-        
-        # Detect Rate Limits (429)
-        if "429" in error_msg or "rate-limited" in error_msg:
-            answer_text = (
-                "## ⚠️ High Global Traffic (Rate Limit)\n\n"
-                "**What happened:** The shared public AI model is currently handling a high volume of traffic and has temporarily paused new requests.\n\n"
-                "**What you can do:**\n"
-                "- **Wait a moment:** This is a temporary cooldown. Please try asking your question again in 10-15 seconds.\n"
-                "- **Switch models:** If the issue persists, the project administrator can easily swap the backend to a less congested model like Llama 3.1 or Gemma 2."
-            )
-        # Detect Authentication Issues (401)
-        elif "401" in error_msg or "api_key" in error_msg or "unauthorized" in error_msg:
-            answer_text = (
-                "## 🔑 API Key Error\n\n"
-                "**What happened:** The application was unable to verify its connection credentials with the AI provider.\n\n"
-                "**What you can do:**\n"
-                "- **Check your environment:** Ensure that the `OPENROUTER_API_KEY` variable is correctly configured in your server environment."
-            )
-        # Fallback for general API disconnects
-        else:
-            answer_text = (
-                "## 🔌 Connection Interrupted\n\n"
-                "**What happened:** An unexpected network timeout or error occurred while communicating with the upstream AI provider.\n\n"
-                "**What you can do:**\n"
-                "- Try resubmitting your question.\n"
-                "- If this continues, check the application server logs."
-            )
+            if response and response.choices and response.choices[0].message:
+                return {
+                    "answer": response.choices[0].message.content,
+                    "sources": [
+                        {"file_path": c["file_path"], "start_line": c["start_line"], "end_line": c["end_line"], "relevance_score": round(c.get("score", 0.0), 3)}
+                        for c in chunks[:5]
+                    ]
+                }
+        except Exception as exc:
+            last_error = str(exc).lower()
+            continue # Move to the next model if this one fails
 
-    # Ensure answer_text is never None or empty to prevent Pydantic response validation crashes
-    if not answer_text or answer_text.strip() == "":
+    # 4. Professional Error Handling (if all models fail)
+    if "429" in last_error or "rate-limited" in last_error:
         answer_text = (
-            "## ⏳ Model Timeout\n\n"
-            "**What happened:** The AI model took too long to respond or returned an empty payload due to heavy server load.\n\n"
-            "**What you can do:**\n"
-            "- Try asking a slightly different or more specific question to prompt a faster response."
+            "## ⚠️ High Global Traffic\n\n"
+            "The AI models are currently overwhelmed. Please wait 15 seconds and try again."
+        )
+    elif "401" in last_error or "unauthorized" in last_error:
+        answer_text = (
+            "## 🔑 API Key Error\n\n"
+            "Please check the application server environment configuration."
+        )
+    else:
+        answer_text = (
+            "## 🔌 Connection Interrupted\n\n"
+            "Unable to reach AI provider. Diagnostic: " + last_error
         )
 
-    return {
-        "answer": answer_text,
-        "sources": [
-            {
-                "file_path": c["file_path"],
-                "start_line": c["start_line"],
-                "end_line": c["end_line"],
-                "relevance_score": round(c.get("score", 0.0), 3),
-            }
-            for c in chunks[:5]
-        ],
-    }
+    return {"answer": answer_text, "sources": []}
