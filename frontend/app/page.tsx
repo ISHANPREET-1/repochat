@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown, { Components } from 'react-markdown'
 
-const BACKEND = 'http://localhost:8000'
+const BACKEND = 'https://repochat-backend.onrender.com'
 
 const STEPS = [
   { label: 'Cloning repository', icon: '⊗' },
