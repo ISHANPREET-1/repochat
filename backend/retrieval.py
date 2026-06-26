@@ -110,13 +110,42 @@ async def chat_with_repo(
             answer_text = None
             
     except Exception as exc:
-        answer_text = f"An API communications error occurred: {str(exc)}"
+        error_msg = str(exc).lower()
+        
+        # Detect Rate Limits (429)
+        if "429" in error_msg or "rate-limited" in error_msg:
+            answer_text = (
+                "## ⚠️ High Global Traffic (Rate Limit)\n\n"
+                "**What happened:** The shared public AI model is currently handling a high volume of traffic and has temporarily paused new requests.\n\n"
+                "**What you can do:**\n"
+                "- **Wait a moment:** This is a temporary cooldown. Please try asking your question again in 10-15 seconds.\n"
+                "- **Switch models:** If the issue persists, the project administrator can easily swap the backend to a less congested model like Llama 3.1 or Gemma 2."
+            )
+        # Detect Authentication Issues (401)
+        elif "401" in error_msg or "api_key" in error_msg or "unauthorized" in error_msg:
+            answer_text = (
+                "## 🔑 API Key Error\n\n"
+                "**What happened:** The application was unable to verify its connection credentials with the AI provider.\n\n"
+                "**What you can do:**\n"
+                "- **Check your environment:** Ensure that the `OPENROUTER_API_KEY` variable is correctly configured in your server environment."
+            )
+        # Fallback for general API disconnects
+        else:
+            answer_text = (
+                "## 🔌 Connection Interrupted\n\n"
+                "**What happened:** An unexpected network timeout or error occurred while communicating with the upstream AI provider.\n\n"
+                "**What you can do:**\n"
+                "- Try resubmitting your question.\n"
+                "- If this continues, check the application server logs."
+            )
 
     # Ensure answer_text is never None or empty to prevent Pydantic response validation crashes
     if not answer_text or answer_text.strip() == "":
         answer_text = (
-            "The model returned an empty response or timed out due to heavy server load. "
-            "Please try rephrasing your query slightly or try again."
+            "## ⏳ Model Timeout\n\n"
+            "**What happened:** The AI model took too long to respond or returned an empty payload due to heavy server load.\n\n"
+            "**What you can do:**\n"
+            "- Try asking a slightly different or more specific question to prompt a faster response."
         )
 
     return {

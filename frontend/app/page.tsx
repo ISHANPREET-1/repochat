@@ -62,14 +62,21 @@ const handleIngest = async (url = repoUrl) => {
     // ─── RESET WARNING STATE ───
     setIsLargeRepo(false)
 
-    // ─── ADDED GITHUB API CHECK ───
+    // ─── GITHUB API CHECK (UX GATEKEEPER) ───
     const match = url.match(/github\.com\/([^/]+)\/([^/]+)/)
     if (match) {
       try {
         const ghRes = await fetch(`https://api.github.com/repos/${match[1]}/${match[2]}`)
         if (ghRes.ok) {
           const ghData = await ghRes.json()
-          // If repo is > 15MB, flip the warning state
+          
+          // 1. HARD BLOCK: If > 30MB, show error and stop completely
+          if (ghData.size > 30000) {
+            setError("⚠️ To ensure lightning-fast responses on our free-tier infrastructure, RepoChat currently supports repositories under 30MB. Please try a smaller project!")
+            return // STOP EXECUTION: Backend is never called, UI stays on landing page
+          }
+          
+          // 2. SOFT WARNING: If > 15MB but under 30MB, show the yellow loading warning
           if (ghData.size > 15000) {
             setIsLargeRepo(true)
           }
