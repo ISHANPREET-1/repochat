@@ -15,10 +15,11 @@ client = OpenAI(
 )
 
 AVAILABLE_MODELS = [
+    "openrouter/free",
     "openai/gpt-oss-20b:free",
-    "google/gemma-2-9b-it:free",
-    "mistralai/mistral-7b-instruct:free",
-    "meta-llama/llama-3.1-8b-instruct:free",
+    "google/gemma-3-12b-it:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-v3:free",
 ]
 
 SYSTEM_PROMPT = """You are RepoChat, an expert code assistant that answers questions about a specific GitHub repository.
