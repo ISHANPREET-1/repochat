@@ -22,7 +22,8 @@ client = OpenAI(
 )
 
 # Free model — change this to any free model on openrouter.ai/models
-FREE_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
+# Reverting back to the model that actually worked
+FREE_MODEL = "openai/gpt-oss-20b:free"
 
 SYSTEM_PROMPT = """You are RepoChat, an expert code assistant that answers questions about a specific GitHub repository.
 
