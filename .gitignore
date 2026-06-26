@@ -1,0 +1,20 @@
+# API keys — never commit
+backend/.env
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+qdrant_storage/
+
+# Node
+node_modules/
+.next/
+
+# Mac
+.DS_Store
+
+# Editor
+.vscode/
