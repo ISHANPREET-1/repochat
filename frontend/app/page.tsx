@@ -287,7 +287,7 @@ const handleIngest = async (url = repoUrl) => {
 
               <div style={{ marginTop: 24, fontSize: 14, color: '#6f7882', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 600 }}>Try:</span>
-                {['kennethreitz/records', 'pallets/flask', 'fastapi/fastapi'].map((r, i) => (
+                {['kennethreitz/records', 'pallets/flask', 'ISHANPREET-1/repochat'].map((r, i) => (
                   <span key={r} style={{ display: 'flex', alignItems: 'center' }}>
                     <button onClick={() => handleIngest(`https://github.com/${r}`)} style={{ background: 'none', border: 'none', color: '#006399', cursor: 'pointer', fontSize: 14, fontWeight: 600, padding: 0 }}>{r}</button>
                     {i < 2 && <span style={{ color: '#bfc7d2', margin: '0 8px' }}>·</span>}
